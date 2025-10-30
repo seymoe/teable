@@ -5,6 +5,7 @@ import {
   generateAccountId,
   generateSpaceId,
   generateUserId,
+  getRandomString,
   minidenticon,
   Role,
 } from '@teable/core';
@@ -45,10 +46,19 @@ export class UserService {
     return (
       userRaw && {
         ...userRaw,
+        email: userRaw.email || '',
         avatar: userRaw.avatar && getPublicFullStorageUrl(userRaw.avatar),
         notifyMeta: userRaw.notifyMeta && JSON.parse(userRaw.notifyMeta),
       }
     );
+  }
+
+  async getUserByEmailOrAccountName(emailOrAccountName: string) {
+    const isEmail = emailOrAccountName.includes('@');
+    if (isEmail) {
+      return this.getUserByEmail(emailOrAccountName);
+    }
+    return this.getUserByAccountName(emailOrAccountName);
   }
 
   async getUserByEmail(email: string) {
@@ -56,6 +66,41 @@ export class UserService {
       where: { email: email.toLowerCase(), deletedTime: null },
       include: { accounts: true },
     });
+  }
+
+  async getUserByAccountName(accountName: string) {
+    return await this.prismaService.txClient().user.findUnique({
+      where: {
+        accountName: accountName.toLowerCase(),
+        deletedTime: null,
+      },
+      include: { accounts: true },
+    });
+  }
+
+  async generateUniqueAccountName(basename: string): Promise<string> {
+    // Clean the base account name: lowercase, remove special chars, keep only alphanumeric, hyphen, and underscore
+    let cleanedAccountName = basename
+      .toLowerCase()
+      .replace(/[^a-z0-9_-]/g, '')
+      .substring(0, 24); // Reserve space for suffix
+
+    if (cleanedAccountName.length < 3) {
+      cleanedAccountName = 'user';
+    }
+
+    // Try the base account name first
+    let accountName = cleanedAccountName;
+    let existingUser = await this.getUserByAccountName(accountName);
+
+    // If taken, add random suffix
+    while (existingUser) {
+      const suffix = getRandomString(8);
+      accountName = `${cleanedAccountName}_${suffix}`;
+      existingUser = await this.getUserByAccountName(accountName);
+    }
+
+    return accountName;
   }
 
   async createSpaceBySignup(createSpaceRo: ICreateSpaceRo) {
@@ -118,72 +163,101 @@ export class UserService {
     return true;
   }
 
+  /**
+   * email or account name is required
+   * if account name is provided, it will be used as is
+   * if account name is not provided, it will be generated from email
+   */
   async createUser(
-    user: Omit<Prisma.UserCreateInput, 'name'> & { name?: string },
+    user: Omit<Prisma.UserCreateInput, 'name' | 'accountName'> & {
+      name?: string;
+      accountName?: string;
+    },
     account?: Omit<Prisma.AccountUncheckedCreateInput, 'userId'>,
     defaultSpaceName?: string
   ) {
+    if (!user.email && !user.accountName) {
+      throw new BadRequestException('Email or account name is required');
+    }
+
     // defaults
     const defaultNotifyMeta: IUserNotifyMeta = {
       email: true,
     };
 
-    user = {
+    const createUserInput: Prisma.UserCreateInput = {
       ...user,
       id: user.id ?? generateUserId(),
-      email: user.email.toLowerCase(),
+      email: user.email?.toLowerCase(),
+      name: user.name ?? '',
+      accountName: user.accountName ?? '',
       notifyMeta: JSON.stringify(defaultNotifyMeta),
     };
+
+    if (!user.accountName) {
+      createUserInput.accountName = await this.generateUniqueAccountName(
+        createUserInput.email?.split('@')[0] ?? 'User'
+      );
+    }
 
     const userTotalCount = await this.prismaService.txClient().user.count({
       where: { isSystem: null },
     });
 
-    const isAdmin = userTotalCount === 0;
-
-    if (!user?.avatar) {
-      const avatar = await this.generateDefaultAvatar(user.id!);
-      user = {
-        ...user,
-        avatar,
-      };
+    if (userTotalCount === 0) {
+      createUserInput.isAdmin = true;
     }
+
+    if (!createUserInput.name) {
+      createUserInput.name = (createUserInput.email?.split('@')[0] ?? 'User') + getRandomString(4);
+    }
+
+    if (!createUserInput?.avatar) {
+      const avatar = await this.generateDefaultAvatar(createUserInput.id!);
+      createUserInput.avatar = avatar;
+    }
+
     // default space created
     const newUser = await this.prismaService.txClient().user.create({
-      data: {
-        ...user,
-        name: user.name ?? user.email.split('@')[0],
-        isAdmin: isAdmin ? true : null,
-      },
+      data: createUserInput,
     });
-    const { id, name } = newUser;
+    const { id, name: userName } = newUser;
     if (account) {
       await this.prismaService.txClient().account.create({
         data: { id: generateAccountId(), ...account, userId: id },
       });
     }
+
     if (this.baseConfig.isCloud) {
       await this.cls.runWith(this.cls.get(), async () => {
         this.cls.set('user.id', id);
-        await this.createSpaceBySignup({ name: defaultSpaceName || `${name}'s space` });
+        await this.createSpaceBySignup({ name: defaultSpaceName || `${userName}'s space` });
       });
     }
-    return newUser;
+    return {
+      ...newUser,
+      email: newUser.email || '',
+    };
   }
 
   async updateUserName(id: string, name: string) {
-    const user: IUserInfoVo = await this.prismaService.txClient().user.update({
+    const userRaw = await this.prismaService.txClient().user.update({
       data: {
         name,
       },
       where: { id, deletedTime: null },
       select: {
         id: true,
+        accountName: true,
         name: true,
         email: true,
         avatar: true,
       },
     });
+    const user: IUserInfoVo = {
+      ...userRaw,
+      email: userRaw.email ?? '',
+    };
     this.eventEmitterService.emitAsync(Events.USER_RENAME, user);
   }
 
@@ -329,8 +403,11 @@ export class UserService {
         if (avatarUrl) {
           avatar = await this.uploadAvatarByUrl(userId, avatarUrl);
         }
+        // Generate username from email prefix or name
+        const baseUsername = email.split('@')[0] || name;
+        const accountName = await this.generateUniqueAccountName(baseUsername);
         return await this.createUserWithSettingCheck(
-          { id: userId, email, name, avatar },
+          { id: userId, accountName, email, name, avatar },
           { provider, providerId, type }
         );
       }
@@ -361,6 +438,7 @@ export class UserService {
       },
       select: {
         id: true,
+        accountName: true,
         name: true,
         email: true,
         avatar: true,
@@ -370,6 +448,7 @@ export class UserService {
       const { avatar } = user;
       return {
         ...user,
+        email: user.email ?? '',
         avatar: avatar && getPublicFullStorageUrl(avatar),
       };
     });
@@ -390,9 +469,13 @@ export class UserService {
       if (!avatar) {
         avatar = await this.generateDefaultAvatar(id);
       }
+      // Generate username for system user
+      const baseUsername = email.split('@')[0] || name;
+      const accountName = await this.generateUniqueAccountName(baseUsername);
       return this.prismaService.txClient().user.create({
         data: {
           id,
+          accountName,
           email,
           name,
           avatar,

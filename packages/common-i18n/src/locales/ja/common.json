@@ -83,6 +83,7 @@
       "updatePhoto": "写真の更新",
       "updateNameDesc": "あなたの名前は投稿やメンションに表示されます。いつでも変更できます。",
       "securityTitle": "アカウントセキュリティ",
+      "accountName": "アカウント名",
       "email": "Eメール",
       "password": "パスワード",
       "passwordDesc": "アカウントにログインするための永続的なパスワードを設定してください。",
@@ -116,6 +117,24 @@
       },
       "addPasswordSuccess": {
         "title": "🎉 パスワードの追加に成功しました。"
+      },
+      "changeAccountName": {
+        "title": "アカウント名の変更",
+        "desc": "新しいアカウント名と現在のパスワードを入力してください。",
+        "current": "現在のアカウント名",
+        "new": "新しいアカウント名",
+        "password": "現在のパスワードを入力",
+        "placeholder": "新しいアカウント名を入力",
+        "error": {
+          "invalidPassword": "パスワードが無効です。",
+          "invalidAccountName": "アカウント名が無効です。",
+          "conflict": "アカウント名は既に使用されています。",
+          "invalidLength": "アカウント名は3〜50文字の範囲で指定してください。"
+        },
+        "success": {
+          "title": "🎉 アカウント名の変更に成功しました。",
+          "desc": "アカウント名が更新されました。"
+        }
       }
     },
     "notify": {

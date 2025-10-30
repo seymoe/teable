@@ -153,6 +153,7 @@
       "updatePhoto": "Update photo",
       "updateNameDesc": "Your name will be displayed on contributions and mentions. You can change it anytime.",
       "securityTitle": "Account security",
+      "accountName": "Account Name",
       "email": "Email",
       "password": "Password",
       "passwordDesc": "Set a permanent password to login to your account.",
@@ -203,6 +204,24 @@
           "title": "🎉 Change email successfully.",
           "desc": "You will be redirected to the login page in 2 seconds.",
           "sendSuccess": "Verification code sent successfully."
+        }
+      },
+      "changeAccountName": {
+        "title": "Change account name",
+        "desc": "Please enter your new account name and current password.",
+        "current": "Current account name",
+        "new": "New account name",
+        "password": "Enter your current password",
+        "placeholder": "Enter new account name",
+        "error": {
+          "invalidPassword": "The password is invalid.",
+          "invalidAccountName": "The account name is invalid.",
+          "conflict": "The account name is already taken.",
+          "invalidLength": "Account name must be between 3 and 50 characters."
+        },
+        "success": {
+          "title": "🎉 Change account name successfully.",
+          "desc": "Your account name has been updated."
         }
       },
       "deleteAccount": {

@@ -91,6 +91,7 @@
       "updatePhoto": "Actualizar foto",
       "updateNameDesc": "Tu nombre se mostrará en contribuciones y menciones. Puedes cambiarlo en cualquier momento.",
       "securityTitle": "Seguridad de la cuenta",
+      "accountName": "Nombre de cuenta",
       "email": "Correo electrónico",
       "password": "Contraseña",
       "passwordDesc": "Establece una contraseña permanente para iniciar sesión en tu cuenta.",
@@ -122,6 +123,24 @@
       },
       "addPasswordSuccess": {
         "title": "🎉 Agregue la contraseña con éxito."
+      },
+      "changeAccountName": {
+        "title": "Cambiar nombre de cuenta",
+        "desc": "Por favor, ingresa tu nuevo nombre de cuenta y tu contraseña actual.",
+        "current": "Nombre de cuenta actual",
+        "new": "Nuevo nombre de cuenta",
+        "password": "Ingresa tu contraseña actual",
+        "placeholder": "Ingresa el nuevo nombre de cuenta",
+        "error": {
+          "invalidPassword": "La contraseña es inválida.",
+          "invalidAccountName": "El nombre de cuenta es inválido.",
+          "conflict": "El nombre de cuenta ya está en uso.",
+          "invalidLength": "El nombre de cuenta debe tener entre 3 y 50 caracteres."
+        },
+        "success": {
+          "title": "🎉 Nombre de cuenta cambiado con éxito.",
+          "desc": "Tu nombre de cuenta ha sido actualizado."
+        }
       },
       "changeEmail": {
         "title": "Actualizar correo electrónico",

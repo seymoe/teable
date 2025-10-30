@@ -77,10 +77,10 @@ export class LocalAuthService {
     return user;
   }
 
-  async validateUserByEmail(email: string, pass: string) {
-    const user = await this.userService.getUserByEmail(email);
+  async validateUserByEmail(emailOrAccountName: string, pass: string) {
+    const user = await this.userService.getUserByEmailOrAccountName(emailOrAccountName);
     if (!user || (user.accounts.length === 0 && user.password == null)) {
-      throw new BadRequestException(`${email} not registered`);
+      throw new BadRequestException(`User ${emailOrAccountName} not registered`);
     }
 
     if (!user.password) {
@@ -130,6 +130,9 @@ export class LocalAuthService {
       return;
     }
     const { email, verification } = body;
+    if (!email) {
+      throw new BadRequestException('Email is required when email verification is enabled');
+    }
     if (!verification) {
       const { token, expiresTime } = await this.sendSignupVerificationCode(email);
       throw new CustomHttpException(
@@ -216,18 +219,28 @@ export class LocalAuthService {
   }
 
   async signup(body: ISignup, remoteIp?: string) {
-    const { email, password, defaultSpaceName, refMeta, inviteCode, turnstileToken } = body;
+    const { accountName, email, password, defaultSpaceName, refMeta, inviteCode, turnstileToken } =
+      body;
 
     this.logger.log(
-      `Signup attempt - email: ${email}, hasPassword: ${!!password}, hasTurnstileToken: ${!!turnstileToken}, tokenLength: ${turnstileToken?.length}, hasVerification: ${!!body.verification}, remoteIp: ${remoteIp}`
+      `Signup attempt - accountName: ${accountName}, email: ${email}, hasPassword: ${!!password}, hasTurnstileToken: ${!!turnstileToken}, tokenLength: ${turnstileToken?.length}, hasVerification: ${!!body.verification}, remoteIp: ${remoteIp}`
     );
 
     await this.validateTurnstileIfEnabled(turnstileToken, remoteIp);
 
     await this.verifySignup(body);
 
-    const user = await this.userService.getUserByEmail(email);
-    this.isRegisteredValidate(user);
+    // Check if email already exists (if provided)
+    let user = null;
+    if (email) {
+      user = await this.userService.getUserByEmail(email);
+      this.isRegisteredValidate(user);
+    }
+    if (accountName) {
+      user = await this.userService.getUserByAccountName(accountName);
+      this.isRegisteredValidate(user);
+    }
+
     const { salt, hashPassword } = await this.encodePassword(password);
     const res = await this.prismaService.$tx(async (prisma) => {
       if (user) {
@@ -244,8 +257,8 @@ export class LocalAuthService {
       return await this.userService.createUserWithSettingCheck(
         {
           id: generateUserId(),
-          name: email.split('@')[0],
-          email,
+          accountName: accountName ?? '',
+          email: email ?? '',
           salt,
           password: hashPassword,
           lastSignTime: new Date().toISOString(),
@@ -323,6 +336,29 @@ export class LocalAuthService {
     );
   }
 
+  async changeAccountName(accountName: string, password: string) {
+    const userId = this.cls.get('user.id');
+    const user = await this.getUserByIdOrThrow(userId);
+
+    const { password: currentHashPassword, salt } = user;
+    if (!(await this.comparePassword(password, currentHashPassword, salt))) {
+      throw new BadRequestException('Password is incorrect');
+    }
+
+    // Check if account name is already taken
+    const existingUser = await this.userService.getUserByAccountName(accountName);
+    if (existingUser && existingUser.id !== userId) {
+      throw new CustomHttpException('Account name already taken', HttpErrorCode.CONFLICT);
+    }
+
+    await this.prismaService.txClient().user.update({
+      data: {
+        accountName: accountName.toLowerCase(),
+      },
+      where: { id: userId, deletedTime: null },
+    });
+  }
+
   async changePassword({ password, newPassword }: IChangePasswordRo) {
     const userId = this.cls.get('user.id');
     const user = await this.getUserByIdOrThrow(userId);
@@ -361,12 +397,12 @@ export class LocalAuthService {
         const url = `${this.mailConfig.origin}/auth/reset-password?code=${resetPasswordCode}`;
         const resetPasswordEmailOptions = await this.mailSenderService.resetPasswordEmailOptions({
           name: user.name,
-          email: user.email,
+          email: user.email ?? '',
           resetPasswordUrl: url,
         });
         await this.mailSenderService.sendMail(
           {
-            to: user.email,
+            to: user.email ?? '',
             ...resetPasswordEmailOptions,
           },
           {

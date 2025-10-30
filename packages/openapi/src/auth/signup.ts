@@ -18,6 +18,16 @@ export type IRefMeta = z.infer<typeof refMetaSchema>;
 
 export const signupSchema = signinSchema.merge(
   z.object({
+    accountName: z
+      .string()
+      .min(3)
+      .max(30)
+      .regex(
+        /^[a-z0-9_-]+$/,
+        'Account name can only contain lowercase letters, numbers, hyphens and underscores'
+      )
+      .optional(),
+    email: z.string().email().toLowerCase().optional(),
     defaultSpaceName: z.string().optional(),
     refMeta: refMetaSchema.optional(),
     password: signupPasswordSchema,

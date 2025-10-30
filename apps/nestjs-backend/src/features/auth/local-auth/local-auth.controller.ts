@@ -8,11 +8,13 @@ import type {
 } from '@teable/openapi';
 import {
   IAddPasswordRo,
+  IChangeAccountNameRo,
   IChangePasswordRo,
   IResetPasswordRo,
   ISendResetPasswordEmailRo,
   ISignup,
   addPasswordRoSchema,
+  changeAccountNameRoSchema,
   changePasswordRoSchema,
   resetPasswordRoSchema,
   sendResetPasswordEmailRoSchema,
@@ -189,5 +191,16 @@ export class LocalAuthController {
     @Body(new ZodValidationPipe(sendChangeEmailCodeRoSchema)) body: ISendChangeEmailCodeRo
   ) {
     return this.authService.sendChangeEmailCode(body.email, body.password);
+  }
+
+  @Patch('/account-name')
+  async changeAccountName(
+    @Body(new ZodValidationPipe(changeAccountNameRoSchema))
+    changeAccountNameRo: IChangeAccountNameRo
+  ): Promise<void> {
+    return this.authService.changeAccountName(
+      changeAccountNameRo.accountName,
+      changeAccountNameRo.password
+    );
   }
 }

@@ -84,6 +84,7 @@
       "updatePhoto": "Mettre à jour la photo",
       "updateNameDesc": "Votre nom sera affiché dans les contributions et les mentions. Vous pouvez le changer à tout moment.",
       "securityTitle": "Sécurité du compte",
+      "accountName": "Nom du compte",
       "email": "Email",
       "password": "Mot de passe",
       "passwordDesc": "Définissez un mot de passe permanent pour vous connecter à votre compte.",
@@ -117,6 +118,24 @@
       },
       "addPasswordSuccess": {
         "title": "🎉 Mot de passe ajouté avec succès."
+      },
+      "changeAccountName": {
+        "title": "Changer le nom du compte",
+        "desc": "Veuillez entrer votre nouveau nom de compte et votre mot de passe actuel.",
+        "current": "Nom du compte actuel",
+        "new": "Nouveau nom de compte",
+        "password": "Entrez votre mot de passe actuel",
+        "placeholder": "Entrez le nouveau nom de compte",
+        "error": {
+          "invalidPassword": "Le mot de passe est invalide.",
+          "invalidAccountName": "Le nom du compte est invalide.",
+          "conflict": "Le nom du compte est déjà pris.",
+          "invalidLength": "Le nom du compte doit contenir entre 3 et 50 caractères."
+        },
+        "success": {
+          "title": "🎉 Nom du compte changé avec succès.",
+          "desc": "Le nom de votre compte a été mis à jour."
+        }
       }
     },
     "notify": {

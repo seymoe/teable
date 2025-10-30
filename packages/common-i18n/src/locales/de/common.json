@@ -91,6 +91,7 @@
       "updatePhoto": "Photo aktualisieren",
       "updateNameDesc": "Ihr Name wird bei Beiträgen und Erwähnungen angezeigt. Sie können ihn jederzeit ändern.",
       "securityTitle": "Konto Sicherheit",
+      "accountName": "Kontoname",
       "email": "E-Mail",
       "password": "Passwort",
       "passwordDesc": "Legen Sie ein dauerhaftes Passwort für die Anmeldung bei Ihrem Konto fest.",
@@ -122,6 +123,24 @@
       },
       "addPasswordSuccess": {
         "title": "🎉 Passwort erfolgreich hinzugefügt."
+      },
+      "changeAccountName": {
+        "title": "Kontoname ändern",
+        "desc": "Bitte geben Sie Ihren neuen Kontonamen und Ihr aktuelles Passwort ein.",
+        "current": "Aktueller Kontoname",
+        "new": "Neuer Kontoname",
+        "password": "Geben Sie Ihr aktuelles Passwort ein",
+        "placeholder": "Neuen Kontonamen eingeben",
+        "error": {
+          "invalidPassword": "Das Passwort ist ungültig.",
+          "invalidAccountName": "Der Kontoname ist ungültig.",
+          "conflict": "Der Kontoname ist bereits vergeben.",
+          "invalidLength": "Der Kontoname muss zwischen 3 und 50 Zeichen lang sein."
+        },
+        "success": {
+          "title": "🎉 Kontoname erfolgreich geändert.",
+          "desc": "Ihr Kontoname wurde aktualisiert."
+        }
       },
       "changeEmail": {
         "title": "E-Mail aktualisieren",

@@ -15,6 +15,7 @@ import { useTranslation } from 'next-i18next';
 import React from 'react';
 import { UserAvatar } from '@/features/app/components/user/UserAvatar';
 import { AddPassword } from './account/AddPassword';
+import { ChangeAccountNameDialog } from './account/ChangeAccountNameDialog';
 import { ChangeEmailDialog } from './account/ChangeEmailDialog';
 import { ChangePasswordDialog } from './account/ChangePasswordDialog';
 import { DeleteAccountDialog } from './account/DeleteAccountDialog';
@@ -104,6 +105,17 @@ export const Account: React.FC = () => {
         </h3>
         <Separator className="my-2" />
         <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <Label>{t('settings.account.accountName')}</Label>
+              <div className="text-xs text-muted-foreground">{sessionUser.accountName}</div>
+            </div>
+            <ChangeAccountNameDialog>
+              <Button className="float-right" size={'sm'} variant={'outline'}>
+                {t('settings.account.changeAccountName.title')}
+              </Button>
+            </ChangeAccountNameDialog>
+          </div>
           <div className="flex items-center justify-between">
             <div>
               <Label>{t('settings.account.email')}</Label>

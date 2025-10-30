@@ -153,6 +153,7 @@
       "updatePhoto": "更新照片",
       "updateNameDesc": "您的姓名将显示在贡献和提及中。您随时可以更改它。",
       "securityTitle": "帐户安全",
+      "accountName": "账户名",
       "email": "电子邮件",
       "password": "密码",
       "passwordDesc": "设置一个永久密码以登录您的帐户。",
@@ -203,6 +204,24 @@
           "title": "🎉 电子邮件更改成功。",
           "desc": "您将在2秒内重定向到登录页面。",
           "sendSuccess": "验证码发送成功。"
+        }
+      },
+      "changeAccountName": {
+        "title": "更改账户名",
+        "desc": "请输入您的新账户名和当前密码。",
+        "current": "当前账户名",
+        "new": "新账户名",
+        "password": "输入您的当前密码",
+        "placeholder": "输入新账户名",
+        "error": {
+          "invalidPassword": "密码无效",
+          "invalidAccountName": "账户名无效",
+          "conflict": "账户名已被占用",
+          "invalidLength": "账户名长度必须在 3 到 50 个字符之间。"
+        },
+        "success": {
+          "title": "🎉 账户名更改成功。",
+          "desc": "您的账户名已更新。"
         }
       },
       "deleteAccount": {

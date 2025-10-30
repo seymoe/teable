@@ -87,6 +87,7 @@
       "updatePhoto": "Fotoğrafı güncelle",
       "updateNameDesc": "Adınız katkılarınızda ve bahsetmelerde görüntülenecektir. İstediğiniz zaman değiştirebilirsiniz.",
       "securityTitle": "Hesap güvenliği",
+      "accountName": "Hesap adı",
       "email": "E-posta",
       "password": "Şifre",
       "passwordDesc": "Hesabınıza giriş yapmak için kalıcı bir şifre belirleyin.",
@@ -120,6 +121,24 @@
       },
       "addPasswordSuccess": {
         "title": "🎉 Şifre başarıyla eklendi."
+      },
+      "changeAccountName": {
+        "title": "Hesap adını değiştir",
+        "desc": "Lütfen yeni hesap adınızı ve mevcut şifrenizi girin.",
+        "current": "Mevcut hesap adı",
+        "new": "Yeni hesap adı",
+        "password": "Mevcut şifrenizi girin",
+        "placeholder": "Yeni hesap adını girin",
+        "error": {
+          "invalidPassword": "Şifre geçersiz.",
+          "invalidAccountName": "Hesap adı geçersiz.",
+          "conflict": "Hesap adı zaten kullanılıyor.",
+          "invalidLength": "Hesap adı 3 ile 50 karakter arasında olmalıdır."
+        },
+        "success": {
+          "title": "🎉 Hesap adı başarıyla değiştirildi.",
+          "desc": "Hesap adınız güncellendi."
+        }
       }
     },
     "notify": {
