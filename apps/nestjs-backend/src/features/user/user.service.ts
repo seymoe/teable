@@ -90,13 +90,12 @@ export class UserService {
     }
 
     // Try the base account name first
-    let accountName = cleanedAccountName;
+    let accountName = cleanedAccountName.toLowerCase();
     let existingUser = await this.getUserByAccountName(accountName);
 
     // If taken, add random suffix
     while (existingUser) {
-      const suffix = getRandomString(8);
-      accountName = `${cleanedAccountName}_${suffix}`;
+      accountName = `${cleanedAccountName}_${getRandomString(8)}`.toLowerCase();
       existingUser = await this.getUserByAccountName(accountName);
     }
 
@@ -209,7 +208,8 @@ export class UserService {
     }
 
     if (!createUserInput.name) {
-      createUserInput.name = (createUserInput.email?.split('@')[0] ?? 'User') + getRandomString(4);
+      const name = createUserInput.email?.split('@')[0];
+      createUserInput.name = name ? name : 'user_' + getRandomString(4);
     }
 
     if (!createUserInput?.avatar) {

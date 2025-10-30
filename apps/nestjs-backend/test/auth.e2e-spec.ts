@@ -16,6 +16,7 @@ import type {
 } from '@teable/openapi';
 import {
   ADD_PIN,
+  CHANGE_ACCOUNT_NAME,
   CHANGE_EMAIL,
   CommentNodeType,
   CREATE_ACCESS_TOKEN,
@@ -54,6 +55,7 @@ import { initApp, runWithTestUser } from './utils/init-app';
 
 describe('Auth Controller (e2e)', () => {
   let app: INestApplication;
+  let appUrl: string;
   let prismaService: PrismaService;
   let settingService: SettingService;
   let clsService: ClsService<IClsStore>;
@@ -66,6 +68,7 @@ describe('Auth Controller (e2e)', () => {
 
     const appCtx = await initApp();
     app = appCtx.app;
+    appUrl = appCtx.appUrl;
     clsService = app.get(ClsService);
     prismaService = app.get(PrismaService);
     settingService = app.get(SettingService);
@@ -124,7 +127,7 @@ describe('Auth Controller (e2e)', () => {
       data: {
         email: 'invite@test-invite-signup.com',
         name: 'Invite',
-        accountName: getRandomString(10),
+        accountName: getRandomString(10).toLowerCase(),
       },
     });
     const res = await signup({
@@ -235,6 +238,358 @@ describe('Auth Controller (e2e)', () => {
     expect(res.status).toBe(200);
     await prismaService.user.delete({
       where: { email: inviteEmail },
+    });
+  });
+
+  describe('signup with accountName', () => {
+    let userId: string;
+    afterEach(async () => {
+      if (userId) {
+        await prismaService.user.delete({
+          where: {
+            id: userId,
+          },
+        });
+        userId = '';
+      }
+    });
+
+    it('api/auth/signup - only email (auto-generate accountName)', async () => {
+      const prefix = getRandomString(10).toLowerCase();
+      const testEmail = prefix + '@test.com';
+      const res = await signup({
+        email: testEmail,
+        password: '12345678a',
+      });
+      expect(res.status).toBe(201);
+      expect(res.data.email).toBe(testEmail);
+      expect(res.data.accountName).toBeDefined();
+      expect(res.data.accountName).not.toBe('');
+      expect(res.data.accountName?.length).toBeGreaterThanOrEqual(3);
+      userId = res.data.id;
+
+      // Verify accountName is auto-generated from email prefix
+      const user = await prismaService.user.findUnique({
+        where: { email: testEmail },
+      });
+      expect(user?.accountName).toBeDefined();
+      expect(user?.accountName.startsWith(prefix)).toBe(true);
+    });
+
+    it('api/auth/signup - only accountName (no email)', async () => {
+      const testAccountName = getRandomString(10).toLowerCase();
+      const res = await signup({
+        accountName: testAccountName,
+        password: '12345678a',
+      });
+      expect(res.status).toBe(201);
+      expect(res.data.accountName).toBe(testAccountName);
+      expect(res.data.email).toBe('');
+      userId = res.data.id;
+
+      // Verify user was created with accountName and no email
+      const user = await prismaService.user.findUnique({
+        where: { accountName: testAccountName },
+      });
+      expect(user).toBeDefined();
+      expect(user?.accountName).toBe(testAccountName);
+      expect(user?.email).toBe('');
+    });
+
+    it('api/auth/signup - both email and accountName', async () => {
+      const testEmail = getRandomString(10).toLowerCase() + '@test.com';
+      const testAccountName = getRandomString(10).toLowerCase();
+      const res = await signup({
+        email: testEmail,
+        accountName: testAccountName,
+        password: '12345678a',
+      });
+      expect(res.status).toBe(201);
+      expect(res.data.email).toBe(testEmail);
+      expect(res.data.accountName).toBe(testAccountName);
+      userId = res.data.id;
+
+      // Verify both fields are set
+      const user = await prismaService.user.findUnique({
+        where: { email: testEmail },
+      });
+      expect(user?.email).toBe(testEmail);
+      expect(user?.accountName).toBe(testAccountName);
+    });
+
+    it('api/auth/signup - accountName already taken', async () => {
+      const takenAccountName = getRandomString(10).toLowerCase();
+      const res = await signup({
+        accountName: takenAccountName,
+        password: '12345678a',
+      });
+      userId = res.data.id;
+
+      // Try to register with the same accountName
+      const error = await getError(() =>
+        signup({
+          accountName: takenAccountName,
+          password: '12345678a',
+        })
+      );
+      expect(error?.status).toBe(409);
+    });
+
+    it('api/auth/signup - accountName validation (too short)', async () => {
+      const error = await getError(() =>
+        signup({
+          accountName: 'ab',
+          password: '12345678a',
+        })
+      );
+      expect(error?.status).toBe(400);
+    });
+
+    it('api/auth/signup - accountName validation (invalid characters)', async () => {
+      const error = await getError(() =>
+        signup({
+          accountName: 'Test@Account',
+          password: '12345678a',
+        })
+      );
+      expect(error?.status).toBe(400);
+    });
+
+    it('api/auth/signup - accountName must be lowercase', async () => {
+      // Schema validation rejects uppercase letters before reaching backend
+      const error = await getError(() =>
+        signup({
+          accountName: 'TestAccount123',
+          password: '12345678a',
+        })
+      );
+      expect(error?.status).toBe(400);
+    });
+  });
+
+  describe('signin with accountName or email', () => {
+    const signInTestEmail = getRandomString(10).toLowerCase() + '@test.com';
+    const signInTestAccountName = getRandomString(10).toLowerCase();
+    const signInTestPassword = '12345678a';
+    let userId: string;
+    beforeAll(async () => {
+      // Create a test user with both email and accountName
+      const res = await signup({
+        email: signInTestEmail,
+        accountName: signInTestAccountName,
+        password: signInTestPassword,
+      });
+      userId = res.data.id;
+    });
+
+    afterAll(async () => {
+      if (userId) {
+        await prismaService.user.delete({
+          where: {
+            id: userId,
+          },
+        });
+        userId = '';
+      }
+    });
+
+    it('api/auth/signin - login with email', async () => {
+      const signInAxios = createAxios();
+      signInAxios.defaults.baseURL = appUrl + '/api';
+
+      const res = await signInAxios.post(SIGN_IN, {
+        email: signInTestEmail,
+        password: signInTestPassword,
+      });
+      expect(res.status).toBe(200);
+      expect(res.data.email).toBe(signInTestEmail);
+      expect(res.data.accountName).toBe(signInTestAccountName);
+    });
+
+    it('api/auth/signin - login with accountName', async () => {
+      const signInAxios = createAxios();
+      signInAxios.defaults.baseURL = appUrl + '/api';
+
+      const res = await signInAxios.post(SIGN_IN, {
+        email: signInTestAccountName, // The field is called 'email' but accepts accountName
+        password: signInTestPassword,
+      });
+      expect(res.status).toBe(200);
+      expect(res.data.email).toBe(signInTestEmail);
+      expect(res.data.accountName).toBe(signInTestAccountName);
+    });
+
+    it('api/auth/signin - login with accountName only user', async () => {
+      const onlyAccountName = getRandomString(10).toLowerCase();
+      const onlyAccountPassword = '12345678a';
+
+      // Create user with only accountName
+      const signupRes = await signup({
+        accountName: onlyAccountName,
+        password: onlyAccountPassword,
+      });
+      userId = signupRes.data.id;
+      const signInAxios = createAxios();
+      signInAxios.defaults.baseURL = appUrl + '/api';
+
+      const signinRes = await signInAxios.post(SIGN_IN, {
+        email: onlyAccountName,
+        password: onlyAccountPassword,
+      });
+      expect(signinRes.status).toBe(200);
+      expect(signinRes.data.accountName).toBe(onlyAccountName);
+      expect(signinRes.data.email).toBe('');
+    });
+
+    it('api/auth/signin - wrong password with email', async () => {
+      const signInAxios = createAxios();
+      signInAxios.defaults.baseURL = appUrl + '/api';
+
+      const error = await getError(() =>
+        signInAxios.post(SIGN_IN, {
+          email: signInTestEmail,
+          password: 'wrongpassword',
+        })
+      );
+      expect(error?.status).toBe(400);
+      expect(error?.message).toContain('Email or password is incorrect');
+    });
+
+    it('api/auth/signin - wrong password with accountName', async () => {
+      const signInAxios = createAxios();
+      signInAxios.defaults.baseURL = appUrl + '/api';
+
+      const error = await getError(() =>
+        signInAxios.post(SIGN_IN, {
+          email: signInTestAccountName,
+          password: 'wrongpassword',
+        })
+      );
+      expect(error?.status).toBe(400);
+      expect(error?.message).toContain('Email or password is incorrect');
+    });
+
+    it('api/auth/signin - non-existent accountName', async () => {
+      const signInAxios = createAxios();
+      signInAxios.defaults.baseURL = appUrl + '/api';
+
+      const error = await getError(() =>
+        signInAxios.post(SIGN_IN, {
+          email: 'nonexistentaccount',
+          password: signInTestPassword,
+        })
+      );
+      expect(error?.status).toBe(400);
+      expect(error?.message).toContain('Email or password is incorrect');
+    });
+  });
+
+  describe('change account name', () => {
+    const changeAccountEmail = 'change-account-name@test.com';
+    const password = '12345678a';
+    let changeAccountAxios: AxiosInstance;
+
+    beforeEach(async () => {
+      changeAccountAxios = await createNewUserAxios({
+        email: changeAccountEmail,
+        password,
+      });
+    });
+
+    afterEach(async () => {
+      await prismaService.user.deleteMany({ where: { email: changeAccountEmail } });
+    });
+
+    it('api/auth/account-name - success', async () => {
+      const newAccountName = getRandomString(10).toLowerCase();
+      const res = await changeAccountAxios.patch(CHANGE_ACCOUNT_NAME, {
+        accountName: newAccountName,
+        password,
+      });
+      expect(res.status).toBe(200);
+
+      // Verify the account name was changed and converted to lowercase
+      const user = await changeAccountAxios.get<IUserMeVo>(USER_ME);
+      expect(user.data.accountName).toBe(newAccountName.toLowerCase());
+    });
+
+    it('api/auth/account-name - password is incorrect', async () => {
+      const error = await getError(() =>
+        changeAccountAxios.patch(CHANGE_ACCOUNT_NAME, {
+          accountName: getRandomString(10).toLowerCase(),
+          password: 'wrongpassword',
+        })
+      );
+      expect(error?.status).toBe(400);
+      expect(error?.message).toContain('Password is incorrect');
+    });
+
+    it('api/auth/account-name - account name already taken', async () => {
+      // Create another user with a specific account name
+      const existingAccountName = getRandomString(10).toLowerCase();
+      const existingEmail = getRandomString(10) + '@test.com';
+      await prismaService.user.create({
+        data: {
+          email: existingEmail,
+          name: 'Existing User',
+          accountName: existingAccountName,
+          password: 'hashedpassword',
+          salt: 'salt',
+        },
+      });
+
+      const error = await getError(() =>
+        changeAccountAxios.patch(CHANGE_ACCOUNT_NAME, {
+          accountName: existingAccountName,
+          password,
+        })
+      );
+      console.log('111111111 error', error);
+      expect(error?.code).toBe(HttpErrorCode.CONFLICT);
+
+      // Clean up
+      await prismaService.user.delete({
+        where: { email: existingEmail },
+      });
+    });
+
+    it('api/auth/account-name - account name too short', async () => {
+      const error = await getError(() =>
+        changeAccountAxios.patch(CHANGE_ACCOUNT_NAME, {
+          accountName: 'ab',
+          password,
+        })
+      );
+      expect(error?.status).toBe(400);
+    });
+
+    it('api/auth/account-name - account name too long', async () => {
+      const error = await getError(() =>
+        changeAccountAxios.patch(CHANGE_ACCOUNT_NAME, {
+          accountName: 'a'.repeat(51),
+          password,
+        })
+      );
+      expect(error?.status).toBe(400);
+    });
+
+    it('api/auth/account-name - can use same account name (case sensitive)', async () => {
+      // Set initial account name
+      await changeAccountAxios.patch(CHANGE_ACCOUNT_NAME, {
+        accountName: 'MyAccountName',
+        password,
+      });
+
+      // Change to different case of the same name should succeed
+      const res = await changeAccountAxios.patch(CHANGE_ACCOUNT_NAME, {
+        accountName: 'MYACCOUNTNAME',
+        password,
+      });
+      expect(res.status).toBe(200);
+
+      // Verify the account name was updated to lowercase
+      const user = await changeAccountAxios.get<IUserMeVo>(USER_ME);
+      expect(user.data.accountName).toBe('myaccountname');
     });
   });
 
@@ -558,8 +913,14 @@ describe('Auth Controller (e2e)', () => {
   it.skipIf(globalThis.testConfig.driver === DriverClient.Sqlite)(
     'api/auth/delete-user - need confirm',
     async () => {
+      // Clean up first to avoid accountName conflicts
+      await prismaService.user.deleteMany({
+        where: {
+          email: 'delete-user-confirm@test-delete-user.com',
+        },
+      });
       const userAxios = await createNewUserAxios({
-        email: 'delete-user@test-delete-user.com',
+        email: 'delete-user-confirm@test-delete-user.com',
         password: '12345678',
       });
       const error = await getError(() => userAxios.delete(DELETE_USER));
@@ -570,6 +931,13 @@ describe('Auth Controller (e2e)', () => {
       );
       expect(error2?.status).toBe(400);
       expect(error2?.message).toContain('Please enter DELETE to confirm');
+
+      // Clean up after test
+      await prismaService.user.deleteMany({
+        where: {
+          email: 'delete-user-confirm@test-delete-user.com',
+        },
+      });
     }
   );
 
