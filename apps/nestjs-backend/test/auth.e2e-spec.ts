@@ -1,7 +1,7 @@
 /* eslint-disable sonarjs/no-duplicate-string */
 import type { INestApplication } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { DriverClient, generateAccountId, HttpErrorCode } from '@teable/core';
+import { DriverClient, generateAccountId, HttpErrorCode, getRandomString } from '@teable/core';
 import { PrismaService } from '@teable/db-main-prisma';
 import type {
   CreateAccessTokenVo,
@@ -124,6 +124,7 @@ describe('Auth Controller (e2e)', () => {
       data: {
         email: 'invite@test-invite-signup.com',
         name: 'Invite',
+        accountName: getRandomString(10),
       },
     });
     const res = await signup({
@@ -227,6 +228,7 @@ describe('Auth Controller (e2e)', () => {
       data: {
         email: inviteEmail,
         name: 'Invite',
+        accountName: getRandomString(10),
       },
     });
     const res = await sendSignupVerificationCode(inviteEmail);
