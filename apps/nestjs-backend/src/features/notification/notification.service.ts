@@ -162,7 +162,7 @@ export class NotificationService {
       ? text
       : (this.i18n.t(text.i18nKey, {
           args: text.context,
-          lang: lang,
+          lang,
         }) as string);
   }
 
